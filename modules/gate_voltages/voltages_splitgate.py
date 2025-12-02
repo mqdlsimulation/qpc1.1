@@ -175,7 +175,7 @@ def create_splitgate_voltages_from_mV(
       - mode="individual" → create_individual_from_mV 사용
     으로 SplitGateVoltages를 생성한다.
 
-    gate.py에서는 mode와 mV 값만 넘겨주면 된다.
+    실행 파일에서는 mode와 mV 값만 넘겨주면 된다.
     """
     if mode == "symmetric":
         return create_symmetric_from_mV(symmetric_Vg_mV)
