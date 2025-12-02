@@ -88,7 +88,7 @@ def configure_gate_voltages(
     - 실제 0.1 mV 양자화 및 Volt 변환은 voltages_splitgate 모듈에서 처리.
     """
     # ---- 여기에서만 전압 숫자를 정의 ----
-    SYMMETRIC_VG_MV: float = -100      # symmetric 모드일 때 양쪽 -0.8 V
+    SYMMETRIC_VG_MV: float = -100      # symmetric 모드일 때 양쪽  mV
     INDIVIDUAL_V_LEFT_MV: float = -800.0
     INDIVIDUAL_V_RIGHT_MV: float = -750.0
 
@@ -116,7 +116,7 @@ def main() -> None:
     # 대표 구조 하나만 골라서 전체 2D 전위맵 확인 (예: 첫 번째 gap)
     rep_struct = gate_structs[0]
 
-    # 화면용 축 범위 (여기는 단순 plotting 범위이므로 허용)
+    # 화면용 축 범위 (여기는 단순 plotting 범위이므로 허용) 위에서 내려다본 figure x, y 축 범위 설정
     xlim_2d = (-500.0, 500.0)   # x 축 보기 범위 [nm]
     ylim_2d = (-500.0, 500.0)   # y 축 보기 범위 [nm]
 
@@ -132,7 +132,7 @@ def main() -> None:
         title="Split gate electrostatic potential (φ(x,y))",
     )
 
-    # 2) 여러 구조에 대해 φ(x,0) 비교 (갭이 다른 QPC들)
+    # 2) 여러 구조에 대해 φ(x,0) 비교 (갭이 다른 QPC들), 퍼텐셜 그래프 x축 범위 설정
     xlim_cut = (-300.0, 300.0)
 
     plot_electrostatics_multi_structures(
