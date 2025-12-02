@@ -5,14 +5,13 @@ plot_electrostatics_draw.py
 
 Electrostatics 결과(φ(x, y))를 시각화하는 helper 모듈.
 
-역할:
-- split gate 구조 + 전압 + electrostatics 모듈을 이용해
-  2DEG 평면 전위 맵(2D colormap)을 그리는 함수
-- 여러 gap 값에 대해 y=0 cut에서 φ(x, 0)을 한 figure에 겹쳐 그리는 함수
+- plot_electrostatics_single:
+    단일 split gate 구조 + 전압에 대한 2D 전위 맵 플롯
+- plot_electrostatics_gap_sweep:
+    여러 gap 값에 대해 y=0 cut에서 φ(x, 0)을 한 figure에 겹쳐 그리는 함수
 
-gate.py에서는:
-- geometry, voltages, gap 리스트, figure 축 범위만 정하고
-- 여기 정의된 함수를 호출하기만 하면 된다.
+geometry/voltages에 대한 숫자 설정은 gate.py에서 GateStructure/Voltages를 만들 때만 하고,
+여기서는 GateStructure 내부의 config를 그대로 읽어서 사용한다.
 """
 
 from __future__ import annotations
@@ -73,7 +72,8 @@ def _make_grid_around_gate(
 
     # GateStructure 내부에 2DEG 깊이 정보가 있으면 사용
     try:
-        d = float(gate_struct.config.two_deg_depth)  # type: ignore[attr-defined]
+        cfg = gate_struct.config  # type: ignore[attr-defined]
+        d = float(cfg.two_deg_depth)
     except Exception:
         d = 35.0  # fallback
 
@@ -163,11 +163,9 @@ def plot_electrostatics_single(
 
 def plot_electrostatics_gap_sweep(
     gaps: List[float],
+    gate_struct_template: GateStructure,
     gate_voltages: SplitGateVoltages,
     *,
-    gate_width_x: float,
-    gate_length_y: float,
-    two_deg_depth: float,
     screened: bool = False,
     nx: int = 201,
     margin_ratio: float = 0.3,
@@ -176,17 +174,26 @@ def plot_electrostatics_gap_sweep(
 ) -> None:
     """
     gap 리스트에 대해:
-      - 각 gap에 맞는 GateStructure 생성
+      - gate_struct_template 의 config를 기준으로
+        각 gap에 맞는 GateStructure를 새로 생성
       - 동일 gate_voltages 사용
       - 각 구조에 대해 φ(x, y)를 계산
       - y=0 cut에서 φ(x, 0)을 한 figure에 겹쳐 그린다.
 
-    gate.py에서는:
-      - 사용할 gaps 리스트
-      - gate_width_x, gate_length_y, two_deg_depth
-      - gate_voltages
-      - xlim 등만 지정 후 이 함수를 호출.
+    geometry 숫자(gate_width_x, gate_length_y, two_deg_depth 등)는
+    gate_struct_template.config에서만 읽어온다.
+    gate.py에서는 gap 리스트와 gate_struct_template만 넘기면 된다.
     """
+    # template에서 geometry config 추출 (단일 소스)
+    cfg = gate_struct_template.config  # type: ignore[attr-defined]
+
+    gate_width_x = float(cfg.gate_width_x)
+    gate_length_y = float(cfg.gate_length_y)
+    two_deg_depth = float(cfg.two_deg_depth)
+    use_dut_offset = bool(cfg.use_dut_offset)
+    dut_Lx = float(cfg.dut_Lx)
+    dut_Ly = float(cfg.dut_Ly)
+
     plt.figure()
 
     for gap in gaps:
@@ -196,9 +203,9 @@ def plot_electrostatics_gap_sweep(
             gate_width_x=gate_width_x,
             gate_length_y=gate_length_y,
             two_deg_depth=two_deg_depth,
-            use_dut_offset=False,
-            dut_Lx=1000.0,
-            dut_Ly=1000.0,
+            use_dut_offset=use_dut_offset,
+            dut_Lx=dut_Lx,
+            dut_Ly=dut_Ly,
             do_describe=False,
             do_plot=False,
         )
