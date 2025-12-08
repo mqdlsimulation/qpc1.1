@@ -65,8 +65,8 @@ def build_splitgates(
     """여러 gap에 대한 split gate 구조 리스트 생성."""
 
     # ---- Split gate geometry 파라미터 ----
-    gate_width_x = 500.0    # nm, x 방향 폭
-    gate_length_y = 80.0    # nm, y 방향 길이 (채널 방향)
+    gate_width_x = 1000.0    # nm, x 방향 폭
+    gate_length_y = 200.0    # nm, y 방향 길이 (채널 방향)
 
     structures: List[GateStructure] = []
 
@@ -101,8 +101,8 @@ def build_trenchgate(
     """
 
     # ---- Trench gate geometry 파라미터 ----
-    x_length = 38       # nm, x 방향 길이 (split gate gap을 가로지름)
-    y_width = 500.0       # nm, y 방향 폭
+    x_length = 50       # nm, x 방향 길이 (split gate gap을 가로지름)
+    y_width = 1000.0       # nm, y 방향 폭
     x_offset = 0.0        # nm
     y_offset = 0.0        # nm
 
@@ -115,7 +115,7 @@ def build_trenchgate(
         split_shapes=split_gates[0].shapes,
         do_describe=do_describe,
         do_plot=do_plot,
-        do_overlap_check=True,
+        do_overlap_check=False,
     )
     return tg
 
@@ -128,8 +128,8 @@ def configure_voltages() -> SplitTrenchVoltages:
     """Split gate + Trench gate 전압 설정."""
 
     # ---- 전압 파라미터 (mV) ----
-    SPLIT_VG_MV: float = -500.0    # split gate 양쪽 동일 전압(mV)
-    TRENCH_VG_MV: float = 1700   # trench gate 전압(mV)
+    SPLIT_VG_MV: float = -1500.0    # split gate 양쪽 동일 전압(mV)
+    TRENCH_VG_MV: float = 2000.0   # trench gate 전압(mV)
 
     split_volts = create_splitgate_voltages_from_mV(
         mode="symmetric",
@@ -179,8 +179,8 @@ def main() -> None:
     print("=" * 60)
 
     # ========== 파라미터 정의 (한 번만) ==========
-    gap_list = [40, 50, 60, 70, 80]  # nm
-    depth_d = 60.0  # nm, 2DEG 깊이 (공통)
+    gap_list = [150]  # nm
+    depth_d = 77.0  # nm, 2DEG 깊이 (공통)
 
     x_range = (-300.0, 300.0)  # grid 계산 범위
     y_range = (-300.0, 300.0)
@@ -188,7 +188,7 @@ def main() -> None:
     xlim_2d = (-250.0, 250.0)  # 2D 맵 표시 범위
     ylim_2d = (-250.0, 250.0)
 
-    xlim_cut = (-50, 50)  # cut 그래프 표시 범위
+    xlim_cut = (-200.0, 200.0)  # cut 그래프 표시 범위
 
     nx, ny = 501, 501
 

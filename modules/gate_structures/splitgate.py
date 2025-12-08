@@ -15,9 +15,6 @@ Split gate geometry generator + 기본적인 시각화 도구.
         run_default_gate_structure,
     )
 
-    # 1) 기본 데모 실행만 하고 싶을 때
-    run_default_gate_structure()
-
     # 2) 직접 파라미터를 주고 싶을 때
     cfg = GateStructureConfig(
         gap=100.0,
