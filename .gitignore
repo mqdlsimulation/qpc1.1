@@ -1,0 +1,7 @@
+# Python cache files
+__pycache__/
+output
+*.pyc
+*.pyo
+*.pyd
+tempCodeRunnerFile
