@@ -18,33 +18,33 @@ from typing import List, Tuple, Optional
 # -------------------- 스위치 설정 (ON/OFF) --------------------
 CONNECT_POINTS = True          # 데이터 포인트를 곡선으로 연결
 SHOW_X_VALUES = False          # 각 포인트에 X값 표시
-SHOW_Y_VALUES = False           # 각 포인트에 Y값 표시
+SHOW_Y_VALUES = True           # 각 포인트에 Y값 표시
 SHOW_ONLY_MAX = False          # 최대 Y값만 표시 (True면 다른 라벨 무시)
 SHOW_HORIZONTAL_LINE = False   # 수평선 표시
 SHOW_VERTICAL_LINE = False     # 수직선 표시
-SHOW_LEGEND = False             # 범례 표시
+SHOW_LEGEND = True             # 범례 표시
 SHOW_GRID = True               # 그리드 표시
 USE_MANUAL_AXIS_RANGE = True   # 축 범위 수동 설정 사용
 
 # -------------------- 축 설정 --------------------
 # X축
-X_LABEL = "2DEG Depth (nm)"       # X축 라벨
-X_LABEL_SIZE = 22              # X축 라벨 크기
-X_TICK_SIZE = 26               # X축 눈금 숫자 크기
-X_MIN = 10                      # X축 최소값 (USE_MANUAL_AXIS_RANGE=True일 때)
+X_LABEL = "X Axis Label"       # X축 라벨
+X_LABEL_SIZE = 14              # X축 라벨 크기
+X_TICK_SIZE = 12               # X축 눈금 숫자 크기
+X_MIN = 0                      # X축 최소값 (USE_MANUAL_AXIS_RANGE=True일 때)
 X_MAX = 100                    # X축 최대값
-X_TICKS = [20, 40, 60, 80, 100]  # X축 표기할 값 (빈 리스트면 자동)
+X_TICKS = [0, 20, 40, 60, 80, 100]  # X축 표기할 값 (빈 리스트면 자동)
 
 # Y축
-Y_LABEL = "Optimal Split Gate Gap (nm)"       # Y축 라벨
-Y_LABEL_SIZE = 22              # Y축 라벨 크기
-Y_TICK_SIZE = 26               # Y축 눈금 숫자 크기
-Y_MIN = 10                      # Y축 최소값 (USE_MANUAL_AXIS_RANGE=True일 때)
-Y_MAX = 100                     # Y축 최대값
-Y_TICKS = [20, 40, 60, 80, 100]  # Y축 표기할 값 (빈 리스트면 자동)
+Y_LABEL = "Y Axis Label"       # Y축 라벨
+Y_LABEL_SIZE = 14              # Y축 라벨 크기
+Y_TICK_SIZE = 12               # Y축 눈금 숫자 크기
+Y_MIN = 0                      # Y축 최소값 (USE_MANUAL_AXIS_RANGE=True일 때)
+Y_MAX = 50                     # Y축 최대값
+Y_TICKS = [0, 10, 20, 30, 40, 50]  # Y축 표기할 값 (빈 리스트면 자동)
 
 # -------------------- 타이틀 설정 --------------------
-GRAPH_TITLE = ""    # 그래프 제목
+GRAPH_TITLE = "Graph Title"    # 그래프 제목
 TITLE_SIZE = 16                # 제목 크기
 TITLE_WEIGHT = "bold"          # 제목 굵기 ("normal", "bold")
 
@@ -64,7 +64,7 @@ LABEL_DECIMALS = 2             # 소수점 자릿수
 
 # -------------------- 보조선 설정 --------------------
 H_LINE_Y = 25                  # 수평선 Y 위치
-H_LINE_COLOR = "yellow"           # 수평선 색상
+H_LINE_COLOR = "red"           # 수평선 색상
 H_LINE_STYLE = "--"            # 수평선 스타일
 H_LINE_WIDTH = 2               # 수평선 두께
 H_LINE_LABEL = "Reference"     # 수평선 범례 라벨
@@ -88,13 +88,7 @@ DPI = 100                      # 해상도
 # -------------------- 데이터 입력 --------------------
 # (x, y) 데이터 포인트 직접 입력
 X_DATA = [20, 30, 40, 50, 60, 70, 80]
-Y_DATA = [27, 38, 50, 60, 74, 84, 96]
-
-# X_DATA = [20, 30, 40, 50, 60, 70, 80]
-# Y_DATA = [47.73, 32.19, 24.25, 19.43, 16.19, 13.88, 12.13]
-
-# X_DATA = [27, 38, 50, 60, 74, 84, 96]
-# Y_DATA = [47.73, 32.19, 24.25, 19.43, 16.20, 13.88, 12.13]
+Y_DATA = [25, 38, 18, 25, 35, 30, 28, 22, 12.]
 
 # ============================================================
 # ▶▶▶ 설정 패널 끝 ◀◀◀

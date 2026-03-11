@@ -53,11 +53,6 @@ from modules.quantum.schrodinger_1d import (
     print_subband_analysis,
 )
 
-from scipy.interpolate import make_interp_spline
-
-
-SHOW_MAX_POINT_MULTI = False    # 다중 DEPTH_D 플롯에서 각 곡선의 최고점 표시
-
 
 # ---------------------------------------------------------
 # 1. 전압 설정
@@ -226,7 +221,7 @@ def plot_fixed_yaxis_comparison(
     x_arrays: List[np.ndarray],
     V_arrays: List[np.ndarray],
     energies_list: List[np.ndarray],
-    # E_fermi: float,
+    E_fermi: float,
     xlim: Tuple[float, float],
     ylim: Tuple[float, float],
     n_levels: int = 5,
@@ -261,7 +256,7 @@ def plot_fixed_yaxis_comparison(
     level_colors = plt.cm.rainbow(np.linspace(0, 1, n_levels))
     
     # eV → meV
-    # E_f_meV = E_fermi * 1e3
+    E_f_meV = E_fermi * 1e3
     
     for idx, (config_pair, x, V, energies, ax) in enumerate(
         zip(config_pairs, x_arrays, V_arrays, energies_list, axes)
@@ -384,9 +379,7 @@ def plot_unified_potentials_with_deltaE(
     x_arrays: List[np.ndarray],
     V_arrays: List[np.ndarray],
     energies_list: List[np.ndarray],
-    # E_fermi: float,
-    tick_fontsize: int = 20,          # ✅ 추가: 축 숫자 크기
-    tick_fontweight: str = "normal",    # ✅ 추가: 축 숫자 굵기(원치 않으면 "normal")
+    E_fermi: float,
     xlim: Tuple[float, float] | None = None,
     title: str = "V(x, y=0) for all gaps with ΔE = E1 - E0",
 ) -> Tuple[plt.Figure, plt.Axes]:
@@ -421,7 +414,7 @@ def plot_unified_potentials_with_deltaE(
             E0_meV = energies_meV[0]
             E1_meV = energies_meV[1]
             ΔE_meV = E1_meV - E0_meV
-            label = f"Gap {gap:.0f} nm"
+            label = f"Gap {gap:.0f} nm (ΔE={ΔE_meV:.2f} meV)"
         else:
             E0_meV = energies_meV[0]
             E1_meV = np.nan
@@ -491,22 +484,19 @@ def plot_unified_potentials_with_deltaE(
     #     )
 
     # 축/레이블/범례
-    ax.set_xlabel("x [nm]", fontsize=18, fontweight="bold")
-    ax.set_ylabel("Potential [mV]", fontsize=18, fontweight="bold")
-    ax.set_title(title, fontsize=16, fontweight="bold", pad=15)
+    ax.set_xlabel("x [nm]", fontsize=13, fontweight="bold")
+    ax.set_ylabel("Energy [meV]", fontsize=13, fontweight="bold")
+    ax.set_title(title, fontsize=15, fontweight="bold", pad=15)
     ax.grid(True, alpha=0.3, linestyle=":", linewidth=0.5)
-    ax.legend(loc="lower right", fontsize=18, framealpha=0.9)
-    # ✅ 축 숫자(틱 라벨) 크기/굵기 키우기
-    ax.tick_params(axis="both", which="major", labelsize=tick_fontsize)
-    ax.tick_params(axis="both", which="minor", labelsize=tick_fontsize)
-    plt.setp(ax.get_xticklabels(), fontweight=tick_fontweight)
-    plt.setp(ax.get_yticklabels(), fontweight=tick_fontweight)
+    ax.legend(loc="upper right", fontsize=10, framealpha=0.9)
 
     if xlim is not None:
         ax.set_xlim(xlim)
 
     plt.tight_layout()
     return fig, ax
+
+
 
 # ---------------------------------------------------------
 # 5. Summary table 생성
@@ -515,7 +505,7 @@ def plot_unified_potentials_with_deltaE(
 def print_summary_table(
     config_pairs: List[Tuple[float, float]],
     energies_list: List[np.ndarray],
-    # E_fermi: float,
+    E_fermi: float,
 ) -> None:
     """
     각 configuration의 subband 정보를 table로 출력.
@@ -528,7 +518,7 @@ def print_summary_table(
           f"{'ΔE [meV]':<12} {'Modes':<8}")
     print("-" * 80)
     
-    # E_f_meV = E_fermi * 1e3
+    E_f_meV = E_fermi * 1e3
     
     for config_pair, energies in zip(config_pairs, energies_list):
         gap, trench_width = config_pair
@@ -541,182 +531,15 @@ def print_summary_table(
         else:
             ΔE = np.nan
         
-        # n_modes = np.sum(energies < E_fermi)
+        n_modes = np.sum(energies < E_fermi)
         
-        print(f"{gap:<12.0f} {trench_width:<14.0f} {E_0:<12.3f} ")
-            #   f"{ΔE:<12.3f} {n_modes:<8d}")
+        print(f"{gap:<12.0f} {trench_width:<14.0f} {E_0:<12.3f} "
+              f"{ΔE:<12.3f} {n_modes:<8d}")
     
     print("=" * 80)
-    # print(f"Fermi energy: {E_f_meV:.3f} meV")
+    print(f"Fermi energy: {E_f_meV:.3f} meV")
     print("=" * 80)
 
-def plot_deltaE_vs_gap_multi_depth(
-    config_pairs: List[Tuple[float, float]],
-    depth_d_list: List[float],
-    grid: ElectrostaticsGrid,
-    voltages: SplitTrenchVoltages,
-    y_position: float = 0.0,
-    n_states: int = 10,
-    use_smooth_curve: bool = True,
-    show_markers: bool = False,
-    figsize: Tuple[float, float] = (12, 8),
-) -> Tuple[plt.Figure, plt.Axes]:
-    """
-    여러 DEPTH_D 값에 대해 ΔE vs Gap을 동일한 plot에 표시.
-    
-    파라미터:
-        config_pairs: [(gap, trench_width), ...]
-        depth_d_list: [depth1, depth2, ...] DEPTH_D 값 리스트
-        grid: ElectrostaticsGrid (depth_d는 각 iteration에서 업데이트)
-        voltages: SplitTrenchVoltages
-        ...
-    
-    반환:
-        (fig, ax)
-    """
-    
-    fig, ax = plt.subplots(figsize=figsize)
-    
-    # 색상 자동 지정
-    colors = plt.cm.tab10(np.linspace(0, 1, len(depth_d_list)))
-    
-    gaps = [pair[0] for pair in config_pairs]
-    
-    for depth_d, color in zip(depth_d_list, colors):
-        print(f"\n{'='*60}")
-        print(f"Computing for DEPTH_D = {depth_d} nm...")
-        print(f"{'='*60}")
-        
-        # 해당 depth_d에 대해 grid 재생성
-        grid_temp = make_uniform_grid(
-            x_min=grid.x.min(),
-            x_max=grid.x.max(),
-            y_min=grid.y.min(),
-            y_max=grid.y.max(),
-            nx=len(grid.x),
-            ny=len(grid.y),
-            depth_d=depth_d,
-        )
-        
-        # 모든 configuration 계산
-        _, _, energies_list, _ = compute_all_configurations(
-            config_pairs=config_pairs,
-            depth_d=depth_d,
-            grid=grid_temp,
-            voltages=voltages,
-            y_position=y_position,
-            n_states=n_states,
-        )
-        
-        # ΔE 계산
-        ΔE_values = []
-        for energies in energies_list:
-            if len(energies) > 1:
-                ΔE = (energies[1] - energies[0]) * 1e3  # meV
-            else:
-                ΔE = np.nan
-            ΔE_values.append(ΔE)
-        
-        # 플롯
-        if use_smooth_curve:
-            gaps_arr = np.array(gaps)
-            ΔE_arr = np.array(ΔE_values)
-            
-            valid_mask = ~np.isnan(ΔE_arr)
-            gaps_valid = gaps_arr[valid_mask]
-            ΔE_valid = ΔE_arr[valid_mask]
-            
-            # 중복 x값 제거
-            unique_gaps, unique_indices = np.unique(gaps_valid, return_inverse=True)
-            ΔE_unique = np.array([ΔE_valid[unique_indices == i].mean() for i in range(len(unique_gaps))])
-            
-            if len(unique_gaps) >= 2:
-                gaps_smooth = np.linspace(unique_gaps.min(), unique_gaps.max(), 300)
-                spl = make_interp_spline(unique_gaps, ΔE_unique, k=min(3, len(unique_gaps)-1))
-                ΔE_smooth = spl(gaps_smooth)
-                
-                ax.plot(
-                    gaps_smooth,
-                    ΔE_smooth,
-                    '-',
-                    color=color,
-                    linewidth=2.5,
-                    label=f'd = {depth_d:.0f} nm',
-                )
-            
-            if show_markers:
-                ax.plot(gaps_valid, ΔE_valid, 'o', color=color, markersize=8)
-            
-            # ★ 최고점 표기 (use_smooth_curve=True일 때)
-            if SHOW_MAX_POINT_MULTI and len(ΔE_unique) > 0:
-                max_idx = np.argmax(ΔE_unique)
-                max_gap = unique_gaps[max_idx]
-                max_ΔE = ΔE_unique[max_idx]
-                
-                ax.plot(max_gap, max_ΔE, 'o', color=color, markersize=10,
-                        markeredgewidth=1.5, zorder=5)
-                
-                ax.text(
-                    max_gap + 20,
-                    max_ΔE,
-                    f'({max_gap:.0f}, {max_ΔE:.2f})',
-                    ha='center',
-                    va='bottom',
-                    fontsize=24,
-                    fontweight='bold',
-                    color='black',
-                )
-        
-        else:
-            ax.plot(
-                gaps,
-                ΔE_values,
-                'o-',
-                color=color,
-                linewidth=2.5,
-                markersize=8,
-                label=f'd = {depth_d:.0f} nm',
-            )
-            
-            # ★ 최고점 표기 (use_smooth_curve=False일 때)
-            if SHOW_MAX_POINT_MULTI:
-                ΔE_arr = np.array(ΔE_values)
-                valid_mask = ~np.isnan(ΔE_arr)
-                gaps_valid = np.array(gaps)[valid_mask]
-                ΔE_valid = ΔE_arr[valid_mask]
-                
-                if len(ΔE_valid) > 0:
-                    max_idx = np.argmax(ΔE_valid)
-                    max_gap = gaps_valid[max_idx]
-                    max_ΔE = ΔE_valid[max_idx]
-                    
-                    ax.plot(max_gap, max_ΔE, 'o', color=color, markersize=12,
-                            markeredgecolor='black', markeredgewidth=1.5, zorder=5)
-                    
-                    ax.text(
-                        max_gap,
-                        max_ΔE - 1,
-                        f'({max_gap:.0f}, {max_ΔE:.2f})',
-                        ha='center',
-                        va='bottom',
-                        fontsize=16,
-                        fontweight='bold',
-                        color=color,
-                    )
-    
-    # 축 설정
-    ax.tick_params(axis='x', labelsize=24)
-    ax.tick_params(axis='y', labelsize=24)
-    ax.set_xlabel('Split Gate Gap [nm]', fontsize=26, fontweight='bold')
-    ax.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=26, fontweight='bold')
-    ax.set_title('ΔE vs Gap for Various 2DEG Depths',
-                 fontsize=26, fontweight='bold')
-    ax.legend(fontsize=24, loc='best')
-    ax.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    
-    return fig, ax
 
 # ---------------------------------------------------------
 # 6. Main
@@ -733,38 +556,18 @@ def main() -> None:
     # ========== Parameters ==========
     # Configuration pairs: (split_gap, trench_width)
     CONFIG_PAIRS = [
-        (77, 60),
-        (78, 10),
-        (78, 20),
-        (78, 25),
-        (78, 30),
-        (78, 35),
-        (78, 40),
-        (78, 45),
-        (78, 50),
-        (78, 55),
-        (78, 60),
-        (78, 65),
-        (78, 70),
-        (78, 75),
+        (40, 1),
+        (50, 1),
+        (60, 1),
+        (70, 1),
+        (80, 1),
     ]
-
-    # ================================
-    # ★ Plot 스위치 설정 (on/off)
-    # ================================
-    SHOW_FERMI_LINE = False        # ΔE vs Gap 그래프에서 Fermi 에너지 점선 표시 여부
-    SHOW_ALL_LABELS = False        # 모든 포인트에 값 표시 (False면 최대값만 표시)
-    USE_SMOOTH_CURVE = True        # 부드러운 곡선으로 연결 (False면 직선+마커)
-    SHOW_MARKERS = False           # 데이터 포인트 마커 표시 여부
-    MULTI_DEPTH_PLOT = True        # 여러 DEPTH_D 값 비교 플롯 생성
-
-
+    
     # Fermi energy (사용자 지정)
     E_FERMI_EV = 8.1e-3  # 8.1 meV = 0.0081 eV
     
     DEPTH_D = 60.0  # nm
-    DEPTH_D_LIST = [38, 60]  # 비교할 DEPTH_D 값들 [nm]
-
+    
     # Grid
     X_RANGE = (-300.0, 300.0)
     Y_RANGE = (-300.0, 300.0)
@@ -776,8 +579,8 @@ def main() -> None:
     N_STATES = 10
     
     # Plot
-    XLIM_PLOT = (-300, 300)
-    YLIM_PLOT = (-700, 20)  # Y축 고정 범위
+    XLIM_PLOT = (-200, 200)
+    YLIM_PLOT = (0, 100)  # Y축 고정 범위
     N_LEVELS_PLOT = 5
     # ================================
     
@@ -785,7 +588,7 @@ def main() -> None:
     print(f"  Configurations: {len(CONFIG_PAIRS)} pairs")
     for gap, trench in CONFIG_PAIRS:
         print(f"    - Gap={gap} nm, Trench={trench} nm")
-    # print(f"  Fermi energy: {E_FERMI_EV*1e3:.3f} meV")
+    print(f"  Fermi energy: {E_FERMI_EV*1e3:.3f} meV")
     print(f"  2DEG depth: {DEPTH_D} nm")
     print(f"  X-direction cut at: y = {Y_POSITION} nm")
     print(f"  Y-axis range: {YLIM_PLOT} meV")
@@ -833,7 +636,7 @@ def main() -> None:
     print_summary_table(
         config_pairs=CONFIG_PAIRS,
         energies_list=energies_list,
-        # E_fermi=E_FERMI_EV,
+        E_fermi=E_FERMI_EV,
     )
     
     # ========== 5) 시각화 ==========
@@ -851,7 +654,7 @@ def main() -> None:
         x_arrays=x_arrays,
         V_arrays=V_arrays,
         energies_list=energies_list,
-        # E_fermi=E_FERMI_EV,
+        E_fermi=E_FERMI_EV,
         xlim=XLIM_PLOT,
         title="V(x, y=0) for all gaps with E0, E1 and ΔE",
     )
@@ -867,7 +670,7 @@ def main() -> None:
         x_arrays=x_arrays,
         V_arrays=V_arrays,
         energies_list=energies_list,
-        # E_fermi=E_FERMI_EV,
+        E_fermi=E_FERMI_EV,
         xlim=XLIM_PLOT,
         ylim=YLIM_PLOT,
         n_levels=N_LEVELS_PLOT,
@@ -879,7 +682,6 @@ def main() -> None:
 
     
     # ΔE vs Gap plot
-
     print("  Creating ΔE vs Gap trend plot...")
     fig_trend, ax_trend = plt.subplots(figsize=(10, 7))
     
@@ -893,122 +695,48 @@ def main() -> None:
             ΔE = np.nan
         ΔE_values.append(ΔE)
     
-# 기본 곡선
-    if USE_SMOOTH_CURVE:
-        # 부드러운 곡선 (스플라인 보간)
-        gaps_arr = np.array(gaps)
-        ΔE_arr = np.array(ΔE_values)
-        
-        # NaN 제거
-        valid_mask = ~np.isnan(ΔE_arr)
-        gaps_valid = gaps_arr[valid_mask]
-        ΔE_valid = ΔE_arr[valid_mask]
-        
-        # 중복 x값 제거 (평균값 사용)
-        unique_gaps, unique_indices = np.unique(gaps_valid, return_inverse=True)
-        ΔE_unique = np.array([ΔE_valid[unique_indices == i].mean() for i in range(len(unique_gaps))])
-        
-        if len(unique_gaps) >= 2:
-            # 스플라인 보간
-            gaps_smooth = np.linspace(unique_gaps.min(), unique_gaps.max(), 300)
-            spl = make_interp_spline(unique_gaps, ΔE_unique, k=min(3, len(unique_gaps)-1))
-            ΔE_smooth = spl(gaps_smooth)
-            
-            ax_trend.plot(
-                gaps_smooth,
-                ΔE_smooth,
-                'b-',
-                linewidth=2.5,
-                label='ΔE (calculated)',
-            )
-        
-        # 마커 표시 (옵션)
-        if SHOW_MARKERS:
-            ax_trend.plot(
-                gaps_valid,
-                ΔE_valid,
-                'bo',
-                markersize=10,
-            )
-    else:
-        # 기존 방식 (직선 + 마커)
-        ax_trend.plot(
-            gaps,
-            ΔE_values,
-            'bo-',
-            linewidth=2.5,
-            markersize=10,
-            label='ΔE (calculated)',
-        )
-
-
-    # 각 Gap 포인트 위에 ΔE 값 숫자로 표시 (스위치 적용)
-    if SHOW_ALL_LABELS:
-        # 모든 포인트에 값 표시
-        for gap, ΔE in zip(gaps, ΔE_values):
-            if np.isnan(ΔE):
-                continue
-            ax_trend.text(
-                gap,
-                ΔE - 1, # 포인트 라벨 위치 조정
-                f"{ΔE:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=18,
-                fontweight="bold",
-            )
-    else:
-        # 최대 y값만 표시
-        valid_indices = [i for i, ΔE in enumerate(ΔE_values) if not np.isnan(ΔE)]
-        if valid_indices:
-            max_idx = max(valid_indices, key=lambda i: ΔE_values[i])
-            ax_trend.text(
-                gaps[max_idx],
-                ΔE_values[max_idx] - 2,
-                f"{ΔE_values[max_idx]:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=18,
-                fontweight="bold",
-            )
+    # 기본 곡선
+    ax_trend.plot(
+        gaps,
+        ΔE_values,
+        'bo-',
+        linewidth=2.5,
+        markersize=10,
+        label='ΔE (calculated)',
+    )
     
-    # Fermi energy reference (스위치 적용)
-    if SHOW_FERMI_LINE:
-        ax_trend.axhline(
-            color='red',
-            linestyle='--',
-            linewidth=2,
-            alpha=0.7,
+    # 각 Gap 포인트 위에 ΔE 값 숫자로 표시
+    for gap, ΔE in zip(gaps, ΔE_values):
+        if np.isnan(ΔE):
+            continue
+        ax_trend.text(
+            gap,
+            ΔE - 1,              # 살짝 아래로 띄워서
+            f"{ΔE:.2f}",           # 예: 3.45
+            ha="center",
+            va="bottom",
+            fontsize=18,
+            fontweight="bold",
         )
+    
+    # Fermi energy reference
+    E_f_meV = E_FERMI_EV * 1e3
+    ax_trend.axhline(
+        E_f_meV,
+        color='red',
+        linestyle='--',
+        linewidth=2,
+        alpha=0.7,
+        label=f'$E_F$ = {E_f_meV:.1f} meV',
+    )
 
-    # ========== 다중 DEPTH_D 비교 플롯 ==========
-    if MULTI_DEPTH_PLOT:
-        print(f"\n{'='*70}")
-        print("Creating Multi-DEPTH_D comparison plot...")
-        print(f"{'='*70}")
-        
-        fig_multi, ax_multi = plot_deltaE_vs_gap_multi_depth(
-            config_pairs=CONFIG_PAIRS,
-            depth_d_list=DEPTH_D_LIST,
-            grid=grid,
-            voltages=voltages,
-            y_position=Y_POSITION,
-            n_states=N_STATES,
-            use_smooth_curve=USE_SMOOTH_CURVE,
-            show_markers=SHOW_MARKERS,
-        )
-        
-        filename_multi = output_dir / "deltaE_vs_gap_multi_depth.png"
-        fig_multi.savefig(filename_multi, dpi=200, bbox_inches='tight')
-        print(f"  Saved: {filename_multi}")
-
-    ax_trend.tick_params(axis='x', labelsize=24)
-    ax_trend.tick_params(axis='y', labelsize=24)
+    ax_trend.tick_params(axis='x', labelsize=18)
+    ax_trend.tick_params(axis='y', labelsize=18)
     ax_trend.set_xlabel('Split Gate Gap [nm]', fontsize=15, fontweight='bold')
-    ax_trend.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=15, fontweight='bold')
-    ax_trend.set_title('ΔE vs Gap\n(X-direction confinement)',
+    ax_trend.set_ylabel('Subband Spacing ΔE = E$_1$ - E$_0$ [meV]', fontsize=15, fontweight='bold')
+    ax_trend.set_title('Subband Spacing ΔE vs Gap\n(X-direction confinement)',
                        fontsize=15, fontweight='bold')
-    ax_trend.legend(fontsize=20, loc="lower right", bbox_to_anchor=(1.0, 0.1))
+    ax_trend.legend(fontsize=17, loc="lower right", bbox_to_anchor=(1.0, 0.1))
     ax_trend.grid(True, alpha=0.3)
     
     filename_trend = output_dir / "spacing_vs_gap.png"
@@ -1021,97 +749,45 @@ def main() -> None:
     
     trenches = [pair[1] for pair in CONFIG_PAIRS]  # 각 config 의 trench width [nm]
     
-# 기본 곡선
-    if USE_SMOOTH_CURVE:
-        # 부드러운 곡선 (스플라인 보간)
-        trenches_arr = np.array(trenches)
-        ΔE_arr = np.array(ΔE_values)
-        
-        # NaN 제거
-        valid_mask = ~np.isnan(ΔE_arr)
-        trenches_valid = trenches_arr[valid_mask]
-        ΔE_valid = ΔE_arr[valid_mask]
-        
-        # 중복 x값 제거 (평균값 사용)
-        unique_trenches, unique_indices = np.unique(trenches_valid, return_inverse=True)
-        ΔE_unique = np.array([ΔE_valid[unique_indices == i].mean() for i in range(len(unique_trenches))])
-        
-        if len(unique_trenches) >= 2:
-            # 스플라인 보간
-            trenches_smooth = np.linspace(unique_trenches.min(), unique_trenches.max(), 300)
-            spl = make_interp_spline(unique_trenches, ΔE_unique, k=min(3, len(unique_trenches)-1))
-            ΔE_smooth = spl(trenches_smooth)
-            
-            ax_trench.plot(
-                trenches_smooth,
-                ΔE_smooth,
-                'm-',
-                linewidth=2.5,
-                label='ΔE (calculated)',
-            )
-        
-        # 마커 표시 (옵션)
-        if SHOW_MARKERS:
-            ax_trench.plot(
-                trenches_valid,
-                ΔE_valid,
-                'mo',
-                markersize=10,
-            )
-    else:
-        # 기존 방식 (직선 + 마커)
-        ax_trench.plot(
-            trenches,
-            ΔE_values,
-            'mo-',
-            linewidth=2.5,
-            markersize=10,
-            label='ΔE (calculated)',
+    # 기본 곡선
+    ax_trench.plot(
+        trenches,
+        ΔE_values,
+        'mo-',
+        linewidth=2.5,
+        markersize=10,
+        label='ΔE (calculated)',
+    )
+    
+    # 각 Trench 포인트 위에 ΔE 값 숫자로 표시
+    for trench, ΔE in zip(trenches, ΔE_values):
+        if np.isnan(ΔE):
+            continue
+        ax_trench.text(
+            trench,
+            ΔE + 0.1,
+            f"{ΔE:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
         )
     
-    # 각 Trench 포인트 위에 ΔE 값 숫자로 표시 (스위치 적용)
-    if SHOW_ALL_LABELS:
-        for trench, ΔE in zip(trenches, ΔE_values):
-            if np.isnan(ΔE):
-                continue
-            ax_trench.text(
-                trench,
-                ΔE + 0.1,
-                f"{ΔE:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                fontweight="bold",
-            )
-    else:
-        valid_indices = [i for i, ΔE in enumerate(ΔE_values) if not np.isnan(ΔE)]
-        if valid_indices:
-            max_idx = max(valid_indices, key=lambda i: ΔE_values[i])
-            ax_trench.text(
-                trenches[max_idx],
-                ΔE_values[max_idx] + 0.1,
-                f"{ΔE_values[max_idx]:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                fontweight="bold",
-            )
-    
     # (선택) Fermi energy 는 참고용으로 동일하게 추가
-    # ax_trench.axhline(
-    #     E_f_meV,
-    #     color='red',
-    #     linestyle='--',
-    #     linewidth=2,
-    #     alpha=0.7,
-    #     label=f'$E_F$ = {E_f_meV:.1f} meV',
-    # )
+    ax_trench.axhline(
+        E_f_meV,
+        color='red',
+        linestyle='--',
+        linewidth=2,
+        alpha=0.7,
+        label=f'$E_F$ = {E_f_meV:.1f} meV',
+    )
     
     ax_trench.set_xlabel('Trench Gate Width [nm]', fontsize=13, fontweight='bold')
-    ax_trench.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=13, fontweight='bold')
-    ax_trench.set_title('ΔE vs Trench Width',
+    ax_trench.set_ylabel('Subband Spacing ΔE = E$_1$ - E$_0$ [meV]', fontsize=13, fontweight='bold')
+    ax_trench.set_title('Subband Spacing ΔE vs Trench Width',
                         fontsize=15, fontweight='bold')
-    ax_trench.legend(fontsize=15, loc='lower right')
+    ax_trench.legend(fontsize=11, loc='upper right')
     ax_trench.grid(True, alpha=0.3)
     
     filename_trench = output_dir / "spacing_vs_trench.png"
@@ -1126,36 +802,12 @@ def main() -> None:
     
     E_0_values = [energies[0] * 1e3 for energies in energies_list]
     
-    if USE_SMOOTH_CURVE:
-        gaps_arr = np.array(gaps)
-        E0_arr = np.array(E_0_values)
-        
-        # 중복 x값 제거 (평균값 사용)
-        unique_gaps, unique_indices = np.unique(gaps_arr, return_inverse=True)
-        E0_unique = np.array([E0_arr[unique_indices == i].mean() for i in range(len(unique_gaps))])
-        
-        if len(unique_gaps) >= 2:
-            gaps_smooth = np.linspace(unique_gaps.min(), unique_gaps.max(), 300)
-            spl = make_interp_spline(unique_gaps, E0_unique, k=min(3, len(unique_gaps)-1))
-            E0_smooth = spl(gaps_smooth)
-            
-            ax_e0.plot(
-                gaps_smooth,
-                E0_smooth,
-                'g-',
-                linewidth=2.5,
-                label='$E_0$ (ground state)',
-            )
-        
-        if SHOW_MARKERS:
-            ax_e0.plot(gaps_arr, E0_arr, 'go', markersize=10)
-    else:
-        ax_e0.plot(gaps, E_0_values, 'go-',
-                  linewidth=2.5, markersize=10, label='$E_0$ (ground state)')
+    ax_e0.plot(gaps, E_0_values, 'go-',
+              linewidth=2.5, markersize=10, label='$E_0$ (ground state)')
     
-    # ax_e0.axhline(E_f_meV, color='red', linestyle='--',
-    #              linewidth=2, alpha=0.7,
-    #              label=f'$E_F$ = {E_f_meV:.1f} meV')
+    ax_e0.axhline(E_f_meV, color='red', linestyle='--',
+                 linewidth=2, alpha=0.7,
+                 label=f'$E_F$ = {E_f_meV:.1f} meV')
     
     ax_e0.set_xlabel('Split Gate Gap [nm]', fontsize=15, fontweight='bold')
     ax_e0.set_ylabel('Ground State Energy $E_0$ [meV]', fontsize=15, fontweight='bold')

@@ -55,10 +55,6 @@ from modules.quantum.schrodinger_1d import (
 
 from scipy.interpolate import make_interp_spline
 
-
-SHOW_MAX_POINT_MULTI = False    # 다중 DEPTH_D 플롯에서 각 곡선의 최고점 표시
-
-
 # ---------------------------------------------------------
 # 1. 전압 설정
 # ---------------------------------------------------------
@@ -83,6 +79,7 @@ def configure_voltages() -> SplitTrenchVoltages:
         trench_voltages=trench_volts,
     )
 
+SHOW_MAX_POINT_MULTI = True    # 다중 DEPTH_D 플롯에서 각 곡선의 최고점 표시
 
 # ---------------------------------------------------------
 # 2. X 방향 1D cut 추출
@@ -421,7 +418,7 @@ def plot_unified_potentials_with_deltaE(
             E0_meV = energies_meV[0]
             E1_meV = energies_meV[1]
             ΔE_meV = E1_meV - E0_meV
-            label = f"Gap {gap:.0f} nm"
+            label = f"Gap {gap:.0f} nm (ΔE={ΔE_meV:.2f} meV)"
         else:
             E0_meV = energies_meV[0]
             E1_meV = np.nan
@@ -492,7 +489,7 @@ def plot_unified_potentials_with_deltaE(
 
     # 축/레이블/범례
     ax.set_xlabel("x [nm]", fontsize=18, fontweight="bold")
-    ax.set_ylabel("Potential [mV]", fontsize=18, fontweight="bold")
+    ax.set_ylabel("Energy [meV]", fontsize=18, fontweight="bold")
     ax.set_title(title, fontsize=16, fontweight="bold", pad=15)
     ax.grid(True, alpha=0.3, linestyle=":", linewidth=0.5)
     ax.legend(loc="lower right", fontsize=18, framealpha=0.9)
@@ -657,14 +654,14 @@ def plot_deltaE_vs_gap_multi_depth(
                         markeredgewidth=1.5, zorder=5)
                 
                 ax.text(
-                    max_gap + 20,
-                    max_ΔE,
+                    max_gap,
+                    max_ΔE + 0.5,
                     f'({max_gap:.0f}, {max_ΔE:.2f})',
                     ha='center',
                     va='bottom',
-                    fontsize=24,
+                    fontsize=10,
                     fontweight='bold',
-                    color='black',
+                    color=color,
                 )
         
         else:
@@ -695,23 +692,23 @@ def plot_deltaE_vs_gap_multi_depth(
                     
                     ax.text(
                         max_gap,
-                        max_ΔE - 1,
+                        max_ΔE + 0.5,
                         f'({max_gap:.0f}, {max_ΔE:.2f})',
                         ha='center',
                         va='bottom',
-                        fontsize=16,
+                        fontsize=10,
                         fontweight='bold',
                         color=color,
                     )
     
     # 축 설정
-    ax.tick_params(axis='x', labelsize=24)
-    ax.tick_params(axis='y', labelsize=24)
-    ax.set_xlabel('Split Gate Gap [nm]', fontsize=26, fontweight='bold')
-    ax.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=26, fontweight='bold')
+    ax.tick_params(axis='x', labelsize=18)
+    ax.tick_params(axis='y', labelsize=18)
+    ax.set_xlabel('Split Gate Gap [nm]', fontsize=15, fontweight='bold')
+    ax.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=15, fontweight='bold')
     ax.set_title('ΔE vs Gap for Various 2DEG Depths',
-                 fontsize=26, fontweight='bold')
-    ax.legend(fontsize=24, loc='best')
+                 fontsize=15, fontweight='bold')
+    ax.legend(fontsize=12, loc='best')
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
@@ -733,20 +730,18 @@ def main() -> None:
     # ========== Parameters ==========
     # Configuration pairs: (split_gap, trench_width)
     CONFIG_PAIRS = [
-        (77, 60),
-        (78, 10),
-        (78, 20),
-        (78, 25),
-        (78, 30),
-        (78, 35),
-        (78, 40),
-        (78, 45),
-        (78, 50),
-        (78, 55),
-        (78, 60),
-        (78, 65),
-        (78, 70),
-        (78, 75),
+        (10, 8),
+        (20, 18),
+        (30, 28),
+        (40, 38),
+        (50, 48),
+        (60, 58),
+        (70, 68),
+        (80, 78),
+        (90, 88),
+        (110, 108),
+        (120, 118),
+        (130, 128),
     ]
 
     # ================================
@@ -762,8 +757,8 @@ def main() -> None:
     # Fermi energy (사용자 지정)
     E_FERMI_EV = 8.1e-3  # 8.1 meV = 0.0081 eV
     
-    DEPTH_D = 60.0  # nm
-    DEPTH_D_LIST = [38, 60]  # 비교할 DEPTH_D 값들 [nm]
+    DEPTH_D = 30.0  # nm
+    DEPTH_D_LIST = [20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]  # 비교할 DEPTH_D 값들 [nm]
 
     # Grid
     X_RANGE = (-300.0, 300.0)
@@ -1002,13 +997,13 @@ def main() -> None:
         fig_multi.savefig(filename_multi, dpi=200, bbox_inches='tight')
         print(f"  Saved: {filename_multi}")
 
-    ax_trend.tick_params(axis='x', labelsize=24)
-    ax_trend.tick_params(axis='y', labelsize=24)
+    ax_trend.tick_params(axis='x', labelsize=18)
+    ax_trend.tick_params(axis='y', labelsize=18)
     ax_trend.set_xlabel('Split Gate Gap [nm]', fontsize=15, fontweight='bold')
     ax_trend.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=15, fontweight='bold')
     ax_trend.set_title('ΔE vs Gap\n(X-direction confinement)',
                        fontsize=15, fontweight='bold')
-    ax_trend.legend(fontsize=20, loc="lower right", bbox_to_anchor=(1.0, 0.1))
+    ax_trend.legend(fontsize=17, loc="lower right", bbox_to_anchor=(1.0, 0.1))
     ax_trend.grid(True, alpha=0.3)
     
     filename_trend = output_dir / "spacing_vs_gap.png"
@@ -1111,7 +1106,7 @@ def main() -> None:
     ax_trench.set_ylabel('ΔE = E$_1$ - E$_0$ [meV]', fontsize=13, fontweight='bold')
     ax_trench.set_title('ΔE vs Trench Width',
                         fontsize=15, fontweight='bold')
-    ax_trench.legend(fontsize=15, loc='lower right')
+    ax_trench.legend(fontsize=11, loc='upper right')
     ax_trench.grid(True, alpha=0.3)
     
     filename_trench = output_dir / "spacing_vs_trench.png"
